@@ -27,7 +27,7 @@
  * Richard Screene <richard.screene@thisisdrum.com>
  *
  *
- * mod_janus.c -- janus Endpoint Module
+ * mod_telnyx_video.c -- telnyx_video Endpoint Module
  *
  * Implements interface between FreeSWITCH and Janus audiobridge
  * (https://github.com/meetecho/janus-gateway)
@@ -46,13 +46,13 @@
 #define JANUS_CONFIG_FILE "janus.conf"
 #endif
 
-SWITCH_MODULE_LOAD_FUNCTION(mod_janus_load);
-SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_janus_shutdown);
-//SWITCH_MODULE_RUNTIME_FUNCTION(mod_janus_runtime);
-SWITCH_MODULE_DEFINITION(mod_janus, mod_janus_load, mod_janus_shutdown, NULL);	//mod_janus_runtime);
+SWITCH_MODULE_LOAD_FUNCTION(mod_telnyx_video_load);
+SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_telnyx_video_shutdown);
+//SWITCH_MODULE_RUNTIME_FUNCTION(mod_telnyx_video_runtime);
+SWITCH_MODULE_DEFINITION(mod_telnyx_video, mod_telnyx_video_load, mod_telnyx_video_shutdown, NULL);	//mod_telnyx_video_runtime);
 
 
-switch_endpoint_interface_t *janus_endpoint_interface;
+switch_endpoint_interface_t *telnyx_video_endpoint_interface;
 
 typedef enum {
 	TFLAG_IO = (1 << 0),
@@ -90,11 +90,11 @@ struct private_object {
 };
 typedef struct private_object private_t;
 
-#define JANUS_SYNTAX "janus [debug|status|listgw]"
-#define JANUS_DEBUG_SYNTAX "janus debug [true|false]"
-#define	JANUS_GATEWAY_SYNTAX "janus server <name> [enable|disable]"
+#define JANUS_SYNTAX "telnyx_video [debug|status|listgw]"
+#define JANUS_DEBUG_SYNTAX "telnyx_video debug [true|false]"
+#define	JANUS_GATEWAY_SYNTAX "telnyx_video server <name> [enable|disable]"
 
-SWITCH_STANDARD_API(janus_api_commands);
+SWITCH_STANDARD_API(telnyx_video_api_commands);
 
 
 static switch_status_t channel_on_init(switch_core_session_t *session);
@@ -904,7 +904,7 @@ static switch_call_cause_t channel_outgoing_channel(switch_core_session_t *sessi
 		return SWITCH_CAUSE_BEARERCAPABILITY_NOTIMPL;
 	}
 
-	*new_session = switch_core_session_request(janus_endpoint_interface, SWITCH_CALL_DIRECTION_OUTBOUND, flags, pool);
+	*new_session = switch_core_session_request(telnyx_video_endpoint_interface, SWITCH_CALL_DIRECTION_OUTBOUND, flags, pool);
 
 	if (!*new_session) {
 		return SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER;
@@ -1034,7 +1034,7 @@ static switch_status_t channel_receive_event(switch_core_session_t *session, swi
 	return SWITCH_STATUS_SUCCESS;
 }
 
-switch_state_handler_table_t janus_state_handlers = {
+switch_state_handler_table_t telnyx_video_state_handlers = {
 	/*.on_init */ channel_on_init,
 	/*.on_routing */ channel_on_routing,
 	/*.on_execute */ channel_on_execute,
@@ -1049,7 +1049,7 @@ switch_state_handler_table_t janus_state_handlers = {
 	/*.on_destroy */ channel_on_destroy
 };
 
-switch_io_routines_t janus_io_routines = {
+switch_io_routines_t telnyx_video_io_routines = {
 	/*.outgoing_channel */ channel_outgoing_channel,
 	/*.read_frame */ channel_read_frame,
 	/*.write_frame */ channel_write_frame,
@@ -1101,7 +1101,7 @@ static switch_status_t load_config(void)
 
 
 
-SWITCH_MODULE_LOAD_FUNCTION(mod_janus_load)
+SWITCH_MODULE_LOAD_FUNCTION(mod_telnyx_video_load)
 {
 	switch_api_interface_t *api_interface;
 	switch_hash_index_t *pIndex = NULL;
@@ -1126,20 +1126,20 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_janus_load)
 	load_config();
 
 	*module_interface = switch_loadable_module_create_module_interface(pool, modname);
-	janus_endpoint_interface = switch_loadable_module_create_interface(*module_interface, SWITCH_ENDPOINT_INTERFACE);
-	janus_endpoint_interface->interface_name = "janus";
-	janus_endpoint_interface->io_routines = &janus_io_routines;
-	janus_endpoint_interface->state_handler = &janus_state_handlers;
+	telnyx_video_endpoint_interface = switch_loadable_module_create_interface(*module_interface, SWITCH_ENDPOINT_INTERFACE);
+	telnyx_video_endpoint_interface->interface_name = "telnyx_video";
+	telnyx_video_endpoint_interface->io_routines = &telnyx_video_io_routines;
+	telnyx_video_endpoint_interface->state_handler = &telnyx_video_state_handlers;
 
 
-	SWITCH_ADD_API(api_interface, "janus", "Janus Menu", janus_api_commands, JANUS_SYNTAX);
+	SWITCH_ADD_API(api_interface, "telnyx_video", "Janus Menu", telnyx_video_api_commands, JANUS_SYNTAX);
 
-	switch_console_set_complete("add janus debug ::[true:false");
-	switch_console_set_complete("add janus status");
-	switch_console_set_complete("add janus list");
-	switch_console_set_complete("add janus server ::janus::listServers enable");
-	switch_console_set_complete("add janus server ::janus::listServers disable");
-	switch_console_add_complete_func("::janus::listServers", serversList);
+	switch_console_set_complete("add telnyx_video debug ::[true:false");
+	switch_console_set_complete("add telnyx_video status");
+	switch_console_set_complete("add telnyx_video list");
+	switch_console_set_complete("add telnyx_video server ::telnyx_video::listServers enable");
+	switch_console_set_complete("add telnyx_video server ::telnyx_video::listServers disable");
+	switch_console_add_complete_func("::telnyx_video::listServers", serversList);
 
 	globals.started = switch_time_now();
 
@@ -1161,13 +1161,13 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_janus_load)
 }
 
 /*
-SWITCH_MODULE_RUNTIME_FUNCTION(mod_janus_runtime)
+SWITCH_MODULE_RUNTIME_FUNCTION(mod_telnyx_video_runtime)
 {
 	return SWITCH_STATUS_TERM;
 }
 */
 
-SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_janus_shutdown)
+SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_telnyx_video_shutdown)
 {
 	switch_hash_index_t *pIndex = NULL;
   server_t *pServer;
@@ -1185,7 +1185,7 @@ SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_janus_shutdown)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-SWITCH_STANDARD_API(janus_api_commands)
+SWITCH_STANDARD_API(telnyx_video_api_commands)
 {
 	char *argv[10] = { 0 };
 	int argc = 0;
