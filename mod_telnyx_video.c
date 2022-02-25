@@ -888,7 +888,7 @@ static switch_call_cause_t channel_outgoing_channel(switch_core_session_t *sessi
 													switch_core_session_t **new_session, switch_memory_pool_t **pool, switch_originate_flag_t flags,
 													switch_call_cause_t *cancel_cause)
 {
-	char channelName[2048] = "janus/";
+	char channelName[2048] = "telnyx_video/";
 	char *pServerName = NULL;
 	char *pCurr = NULL;
 	char *pNext = NULL;
