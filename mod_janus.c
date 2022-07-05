@@ -130,6 +130,7 @@ switch_status_t joined(janus_id_t serverId, janus_id_t senderId, janus_id_t room
 	tech_pvt = switch_core_session_get_private(session);
 	switch_assert(tech_pvt);
 
+	switch_channel_set_variable(channel, "rtp_ext_audio_level_events", "true");
 	switch_channel_set_variable(channel, "media_webrtc", "true");
 	switch_channel_set_flag(channel, CF_AUDIO);
 
