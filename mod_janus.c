@@ -132,6 +132,8 @@ switch_status_t joined(janus_id_t serverId, janus_id_t senderId, janus_id_t room
 
 	switch_channel_set_variable(channel, "rtp_ext_audio_level_events", "true");
 	switch_channel_set_variable(channel, "media_webrtc", "true");
+	switch_channel_set_variable(channel, "rtp_enable_vad_out", "true");
+	switch_channel_set_variable(channel, "rtp_enable_vad_in", "true");
 	switch_channel_set_flag(channel, CF_AUDIO);
 
 	switch_channel_set_variable(channel, "absolute_codec_string", pServer->codec_string);
