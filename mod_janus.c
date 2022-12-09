@@ -113,13 +113,20 @@ switch_status_t joined(janus_id_t serverId, janus_id_t senderId, janus_id_t room
 	switch_channel_t *channel;
 	private_t *tech_pvt;
 	server_t *pServer;
+	char * uuid;
+	switch_status_t status = SWITCH_STATUS_SUCCESS;
 
 	if (!(pServer = (server_t *) hashFind(&globals.serverIdLookup, serverId))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No server for serverId=%" SWITCH_UINT64_T_FMT "\n", serverId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
 
-	if (!(session = (switch_core_session_t *) hashFind(&pServer->senderIdLookup, senderId))) {
+	if (!(uuid = (char *) hashFind(&pServer->senderIdLookup, senderId))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
+		return SWITCH_STATUS_NOTFOUND;
+	}
+
+	if (!(session = switch_core_session_locate(uuid))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
@@ -146,7 +153,8 @@ switch_status_t joined(janus_id_t serverId, janus_id_t senderId, janus_id_t room
 	if (switch_core_media_choose_ports(session, SWITCH_TRUE, SWITCH_FALSE) != SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Cannot choose ports\n");
 		switch_channel_hangup(channel, SWITCH_CAUSE_NETWORK_OUT_OF_ORDER);
-		return SWITCH_STATUS_FALSE;
+		status = SWITCH_STATUS_FALSE;
+		goto done;
 	}
 
 	switch_core_media_gen_local_sdp(session, SDP_TYPE_REQUEST, NULL, 0, NULL, 0);
@@ -166,7 +174,9 @@ switch_status_t joined(janus_id_t serverId, janus_id_t senderId, janus_id_t room
 		switch_channel_hangup(channel, SWITCH_CAUSE_NETWORK_OUT_OF_ORDER);
 	}
 
-	return SWITCH_STATUS_SUCCESS;
+done:
+	switch_core_session_rwunlock(session);
+	return status;
 }
 
 // called when we have received the body of the SDP and all of the candidates
@@ -224,13 +234,20 @@ switch_status_t accepted(janus_id_t serverId, janus_id_t senderId, const char *p
 	private_t *tech_pvt;
 	server_t *pServer;
 	char isTrickling;
+	char *uuid = NULL;
+	switch_status_t status = SWITCH_STATUS_FALSE;
 
 	if (!(pServer = (server_t *) hashFind(&globals.serverIdLookup, serverId))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No server for serverId=%" SWITCH_UINT64_T_FMT "\n", serverId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
 
-	if (!(session = (switch_core_session_t *) hashFind(&pServer->senderIdLookup, senderId))) {
+	if (!(uuid = (char *) hashFind(&pServer->senderIdLookup, senderId))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
+		return SWITCH_STATUS_NOTFOUND;
+	}
+
+	if (!(session = switch_core_session_locate(uuid))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
@@ -244,16 +261,21 @@ switch_status_t accepted(janus_id_t serverId, janus_id_t senderId, const char *p
 	DEBUG(SWITCH_CHANNEL_LOG, "isTrickling=%d\n", isTrickling);
 
 	if (!isTrickling || tech_pvt->isTrickleComplete) {
-		return proceed(session);
+		status = proceed(session);
 	} else {
-		return SWITCH_STATUS_SUCCESS;
+		status = SWITCH_STATUS_SUCCESS;
 	}
+
+	switch_core_session_rwunlock(session);
+	return status;
 }
 
 switch_status_t trickle(janus_id_t serverId, janus_id_t senderId, const char *pCandidate) {
 	switch_core_session_t *session;
 	server_t *pServer;
 	private_t *tech_pvt;
+	char *uuid = NULL;
+	switch_status_t status = SWITCH_STATUS_FALSE;
 
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "serverId=%" SWITCH_UINT64_T_FMT " candidate=%s\n",
 		serverId, pCandidate);
@@ -263,7 +285,12 @@ switch_status_t trickle(janus_id_t serverId, janus_id_t senderId, const char *pC
 		return SWITCH_STATUS_NOTFOUND;
 	}
 
-	if (!(session = (switch_core_session_t *) hashFind(&pServer->senderIdLookup, senderId))) {
+	if (!(uuid = (char *) hashFind(&pServer->senderIdLookup, senderId))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
+		return SWITCH_STATUS_NOTFOUND;
+	}
+
+	if (!(session = switch_core_session_locate(uuid))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
@@ -278,18 +305,21 @@ switch_status_t trickle(janus_id_t serverId, janus_id_t senderId, const char *pC
 			tech_pvt->pSdpCandidates ? tech_pvt->pSdpCandidates : "");
 		if (tech_pvt->pSdpBody) {
 			// we've already for the body - proceed
-			return proceed(session);
+			status = proceed(session);
 		} else {
 			// wait for the SDP body and then continue
-			return SWITCH_STATUS_SUCCESS;
+			status = SWITCH_STATUS_SUCCESS;
 		}
 	} else {
 		tech_pvt->pSdpCandidates = switch_core_session_sprintf(session, "%sa=%s\r\n",
 			tech_pvt->pSdpCandidates ? tech_pvt->pSdpCandidates : "", pCandidate);
 
 		DEBUG(SWITCH_CHANNEL_LOG, "candidates=%s\n", tech_pvt->pSdpCandidates);
-		return SWITCH_STATUS_SUCCESS;
+		status = SWITCH_STATUS_SUCCESS;
 	}
+
+	switch_core_session_rwunlock(session);
+	return status;
 }
 
 switch_status_t answered(janus_id_t serverId, janus_id_t senderId) {
@@ -297,13 +327,19 @@ switch_status_t answered(janus_id_t serverId, janus_id_t senderId) {
 	switch_core_session_t *session;
 	switch_channel_t *channel;
 	server_t *pServer;
+	char *uuid = NULL;
 
 	if (!(pServer = (server_t *) hashFind(&globals.serverIdLookup, serverId))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No server for serverId=%" SWITCH_UINT64_T_FMT "\n", serverId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
 
-	if (!(session = (switch_core_session_t *) hashFind(&pServer->senderIdLookup, senderId))) {
+	if (!(uuid = (char *) hashFind(&pServer->senderIdLookup, senderId))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
+		return SWITCH_STATUS_NOTFOUND;
+	}
+
+	if (!(session = switch_core_session_locate(uuid))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
@@ -312,7 +348,7 @@ switch_status_t answered(janus_id_t serverId, janus_id_t senderId) {
 	switch_assert(channel);
 
 	switch_channel_answer(channel);
-
+	switch_core_session_rwunlock(session);
 	return SWITCH_STATUS_SUCCESS;
 }
 
@@ -320,13 +356,19 @@ switch_status_t hungup(janus_id_t serverId, janus_id_t senderId, const char *pRe
 	switch_core_session_t *session;
 	switch_channel_t *channel;
 	server_t *pServer;
+	char *uuid = NULL;
 
 	if (!(pServer = (server_t *) hashFind(&globals.serverIdLookup, serverId))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No server for serverId=%" SWITCH_UINT64_T_FMT "\n", serverId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
 
-	if (!(session = (switch_core_session_t *) hashFind(&pServer->senderIdLookup, senderId))) {
+	if (!(uuid = (char *) hashFind(&pServer->senderIdLookup, senderId))) {
+		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
+		return SWITCH_STATUS_NOTFOUND;
+	}
+
+	if (!(session = switch_core_session_locate(uuid))) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "No session for senderId=%" SWITCH_UINT64_T_FMT "\n", senderId);
 		return SWITCH_STATUS_NOTFOUND;
 	}
@@ -338,6 +380,7 @@ switch_status_t hungup(janus_id_t serverId, janus_id_t senderId, const char *pRe
 
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_INFO, "Hungup reason=%s\n", pReason);
 
+	switch_core_session_rwunlock(session);
 	return SWITCH_STATUS_SUCCESS;
 }
 
@@ -371,17 +414,23 @@ static void *SWITCH_THREAD_FUNC server_thread_run(switch_thread_t *pThread, void
 				private_t *tech_pvt;
 				switch_channel_t *channel;
 				switch_hash_index_t *pIndex = NULL;
+				char * uuid = NULL;
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Server=%s claim failed - status=%d\n", pServer->name, status);
 
-				while ((session = (switch_core_session_t *) hashIterate(&pServer->senderIdLookup, &pIndex)) != NULL) {
-					tech_pvt = switch_core_session_get_private(session);
- 					switch_assert(tech_pvt);
-					channel = switch_core_session_get_channel(session);
-					switch_assert(channel);
-					//NB. the server is likely to have been removed by the time the hangup has completed
-					switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
+				while ((uuid = (char *) hashIterate(&pServer->senderIdLookup, &pIndex)) != NULL) {
+					session = switch_core_session_locate(uuid);
+					if (session) {
+						tech_pvt = switch_core_session_get_private(session);
+						switch_assert(tech_pvt);
+						channel = switch_core_session_get_channel(session);
+						switch_assert(channel);
+						//NB. the server is likely to have been removed by the time the hangup has completed
+						switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
+						switch_core_session_rwunlock(session);
+					}
 					(void) hashDelete(&pServer->senderIdLookup, tech_pvt->senderId);
+					switch_safe_free(uuid);
 				}
 				// reset serverId so we get a new one the next time around
 				serverId = 0;
@@ -496,6 +545,7 @@ static switch_status_t channel_on_init(switch_core_session_t *session)
 	switch_channel_t *channel = NULL;
 	private_t *tech_pvt = NULL;
 	server_t *pServer = NULL;
+	char* uuid = NULL;
 
 	switch_assert(session);
 
@@ -524,7 +574,8 @@ static switch_status_t channel_on_init(switch_core_session_t *session)
 		return SWITCH_STATUS_FALSE;
 	}
 
-	if (hashInsert(&pServer->senderIdLookup, tech_pvt->senderId, (void *) session) != SWITCH_STATUS_SUCCESS) {
+	uuid = strdup(switch_core_session_get_uuid(session));
+	if (zstr(uuid) || hashInsert(&pServer->senderIdLookup, tech_pvt->senderId, (void *) uuid) != SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Failed to insert senderId=%" SWITCH_UINT64_T_FMT " in hash\n", tech_pvt->senderId);
 		switch_channel_hangup(channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
 		return SWITCH_STATUS_FALSE;
