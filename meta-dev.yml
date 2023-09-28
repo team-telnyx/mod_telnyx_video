@@ -1,0 +1,11 @@
+names:
+    service: core-tel-mod-telnyx-video
+project:
+    squad: core.telephony.squad
+    primary_maintainer: ryanc
+    secondary_maintainer: null
+    public_api: false
+    private_api: false
+build:
+    promote_to_dev:
+        branch_pattern: "master|development"
