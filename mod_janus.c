@@ -427,9 +427,9 @@ static void *SWITCH_THREAD_FUNC server_thread_run(switch_thread_t *pThread, void
 						switch_assert(channel);
 						//NB. the server is likely to have been removed by the time the hangup has completed
 						switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
+						(void) hashDelete(&pServer->senderIdLookup, tech_pvt->senderId);
 						switch_core_session_rwunlock(session);
 					}
-					(void) hashDelete(&pServer->senderIdLookup, tech_pvt->senderId);
 					switch_safe_free(uuid);
 				}
 				// reset serverId so we get a new one the next time around
