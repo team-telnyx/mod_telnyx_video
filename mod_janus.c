@@ -415,10 +415,11 @@ static void *SWITCH_THREAD_FUNC server_thread_run(switch_thread_t *pThread, void
 				switch_channel_t *channel;
 				switch_hash_index_t *pIndex = NULL;
 				char * uuid = NULL;
+				const void *val;
 
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "Server=%s claim failed - status=%d\n", pServer->name, status);
 
-				while ((uuid = (char *) hashIterate(&pServer->senderIdLookup, &pIndex)) != NULL) {
+				while ((uuid = (char *) hashIterate(&pServer->senderIdLookup, &pIndex, &val)) != NULL) {
 					session = switch_core_session_locate(uuid);
 					if (session) {
 						tech_pvt = switch_core_session_get_private(session);
@@ -427,9 +428,9 @@ static void *SWITCH_THREAD_FUNC server_thread_run(switch_thread_t *pThread, void
 						switch_assert(channel);
 						//NB. the server is likely to have been removed by the time the hangup has completed
 						switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
-						(void) hashDelete(&pServer->senderIdLookup, tech_pvt->senderId);
 						switch_core_session_rwunlock(session);
 					}
+					(void) hashDeleteStr(&pServer->senderIdLookup, (char *)val);
 					switch_safe_free(uuid);
 				}
 				// reset serverId so we get a new one the next time around
