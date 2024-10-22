@@ -47,8 +47,9 @@ typedef struct {
 switch_status_t hashCreate(hash_t *pHash, switch_memory_pool_t *pPool);
 switch_status_t hashInsert(const hash_t *pHash, const janus_id_t id, const  void *pData);
 void *hashFind(const hash_t *pHash, const janus_id_t id);
+switch_status_t hashDeleteStr(const hash_t *pHash, char *pIdStr);
 switch_status_t hashDelete(const hash_t *pHash, const janus_id_t id);
-void *hashIterate(hash_t *pHash, switch_hash_index_t **pIndex);
+void *hashIterate(hash_t *pHash, switch_hash_index_t **pIndex, const void **pVar);
 switch_status_t hashDestroy(hash_t *pHash);
 
 #endif //_HASH_H_
