@@ -93,16 +93,16 @@ void *hashFind(const hash_t *pHash, const janus_id_t id) {
 }
 
 switch_status_t hashDeleteStr(const hash_t *pHash, char *pIdStr) {
-	void *pResult;
+  void *pResult;
 
-	switch_assert(pHash);
+  switch_assert(pHash);
 
-	DEBUG(SWITCH_CHANNEL_LOG, "Delete id=%s\n", pIdStr);
+  DEBUG(SWITCH_CHANNEL_LOG, "Delete id=%s\n", pIdStr);
 
-	pResult = switch_core_hash_delete_locked(pHash->pTable, pIdStr, pHash->pMutex);
-	switch_safe_free(pIdStr);
+  pResult = switch_core_hash_delete_locked(pHash->pTable, pIdStr, pHash->pMutex);
+  switch_safe_free(pIdStr);
 
-	return pResult ? SWITCH_STATUS_SUCCESS : SWITCH_STATUS_FALSE;
+  return pResult ? SWITCH_STATUS_SUCCESS : SWITCH_STATUS_FALSE;
 }
 
 switch_status_t hashDelete(const hash_t *pHash, const janus_id_t id) {
