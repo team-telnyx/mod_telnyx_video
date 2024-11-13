@@ -100,7 +100,6 @@ switch_status_t hashDeleteStr(const hash_t *pHash, char *pIdStr) {
   DEBUG(SWITCH_CHANNEL_LOG, "Delete id=%s\n", pIdStr);
 
   pResult = switch_core_hash_delete_locked(pHash->pTable, pIdStr, pHash->pMutex);
-  switch_safe_free(pIdStr);
 
   return pResult ? SWITCH_STATUS_SUCCESS : SWITCH_STATUS_FALSE;
 }
