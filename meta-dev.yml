@@ -8,4 +8,4 @@ project:
     private_api: false
 build:
     promote_to_dev:
-        branch_pattern: "master|development"
+        branch_pattern: "master|deploy-development"
