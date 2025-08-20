@@ -9,3 +9,7 @@ mod_janus_la_SOURCES  = globals.c cJSON.c http.c api.c servers.c hash.c mod_janu
 mod_janus_la_CFLAGS   = $(AM_CFLAGS) $(FREESWITCH_CFLAGS)
 mod_janus_la_LDFLAGS  = -avoid-version -module -no-undefined -shared $(FREESWITCH_LIBS) $(OPENSSL_LIBS) $(MOSQUITTO_LIBS)
 mod_janus_la_LIBADD   = $(LIBS)
+
+print_tests:
+	@set +e; \
+	test -z "$(TESTS)" || for i in $(TESTS); do echo $(subdir)/$$i; done;
