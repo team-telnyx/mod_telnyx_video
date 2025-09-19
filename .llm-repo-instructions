@@ -1,0 +1,109 @@
+# LLM Repository Instructions for mod_telnyx_video
+
+## Project Overview
+This is a FreeSWITCH module providing Telnyx video conferencing functionality through Janus WebRTC gateway integration, implemented in C with cJSON library support.
+
+## Code Style and Conventions
+- Follow existing C coding patterns consistent with FreeSWITCH modules
+- Use consistent variable naming conventions (snake_case for variables, UPPER_CASE for constants)
+- Maintain existing function signature patterns and return value conventions
+- Preserve existing comment style and documentation format
+- Follow modular architecture with separate components for different video features
+
+## Memory Management
+- Always check for NULL pointers before dereferencing
+- Handle cJSON object lifecycles properly with cJSON_Delete()
+- Manage Janus session and handle memory efficiently
+- Ensure proper cleanup of video server resources
+- Avoid memory leaks in continuous video processing
+
+## Build System
+- This project uses autotools (configure.ac, Makefile.am)
+- Dependencies: cJSON library, HTTP client libraries, Janus WebRTC gateway
+- Build process includes bootstrap.sh script for autotools
+- Handle Janus configuration and server management
+- Respect existing compiler flags and optimization settings
+
+## Error Handling
+- Check return values of all Janus and HTTP API calls
+- Use switch_log_printf for FreeSWITCH-consistent logging
+- Handle Janus server connection failures gracefully
+- Validate JSON message structure and content
+- Provide meaningful error messages for debugging
+
+## Video Conferencing Features
+- **Janus Integration**: Interface with Janus WebRTC gateway
+- **Server Management**: Handle multiple Janus server instances
+- **Session Management**: Manage video conference sessions
+- **API Integration**: RESTful API for video operations
+- **Hash Table Management**: Efficient data structure handling
+
+## Janus WebRTC Gateway Integration
+- Implement Janus REST API communication
+- Handle Janus session establishment and management
+- Process Janus plugin interactions and responses
+- Manage Janus server load balancing and failover
+- Handle Janus event processing and notifications
+
+## HTTP and API Integration
+- Handle RESTful API endpoints for video operations
+- Process HTTP request/response cycles efficiently
+- Implement proper HTTP client connection management
+- Handle API authentication and session management
+- Support various HTTP methods and JSON payloads
+
+## JSON Processing
+- Use cJSON library consistently and safely
+- Validate JSON structure before processing
+- Handle JSON parsing errors gracefully
+- Implement proper JSON object cleanup
+- Process Janus-specific JSON message formats
+
+## FreeSWITCH Integration
+- Follow FreeSWITCH module conventions (SWITCH_MODULE_*)
+- Integrate with FreeSWITCH's media processing pipeline
+- Handle session and channel lifecycle properly
+- Use FreeSWITCH APIs for media handling and routing
+- Implement proper module command and API interfaces
+
+## Video Server Management
+- Handle multiple Janus server configurations
+- Implement server health monitoring and failover
+- Manage server load balancing and resource allocation
+- Handle server registration and discovery
+- Process server status and performance monitoring
+
+## Session and Conference Management
+- Handle video conference creation and management
+- Process participant joining and leaving operations
+- Manage conference state and participant tracking
+- Handle video quality and bandwidth management
+- Support various conference modes and features
+
+## Performance Considerations
+- Optimize video server communication for low latency
+- Handle concurrent video sessions efficiently
+- Minimize CPU usage in video processing operations
+- Consider bandwidth usage and network performance
+- Profile video processing performance regularly
+
+## Configuration Management
+- Handle Janus configuration file management
+- Support dynamic server configuration updates
+- Manage video quality and performance settings
+- Handle per-conference and global settings
+- Support video codec and media format configurations
+
+## Security and Access Control
+- Implement proper authentication for video sessions
+- Handle access control and permissions
+- Manage secure video session establishment
+- Process participant authentication and authorization
+- Handle secure communication with Janus servers
+
+## Before Making Changes
+- Understand Janus WebRTC gateway architecture and APIs
+- Test with various browsers and video clients
+- Consider impact on video quality and user experience
+- Verify compatibility with different Janus versions
+- Test concurrent video session scenarios and scalability
