@@ -6,6 +6,7 @@ on:
       - main
       - deploy-*
       - release-*
+  delete:
   pull_request:
     branches:
       - master
@@ -54,7 +55,39 @@ jobs:
               echo "⚠️ [$SOURCE] Failed to create $BRANCH in $target (HTTP $HTTP_CODE)"
             fi
           done
+      - name: Delete branch in downstream repos
+        if: github.event_name == 'delete' && github.event.ref_type == 'branch' && (startsWith(github.event.ref, 'deploy-') || startsWith(github.event.ref, 'release-'))
+        env:
+          GH_TOKEN: ${{ secrets.GIT_TOKEN }}
+          BRANCH: ${{ github.event.ref }}
+          SOURCE: ${{ github.event.repository.name }}
+        run: |
+          set -euo pipefail
+          ORG="team-telnyx"
+
+          # Determine targets (same routing as creation)
+          TARGETS=("telnyx_b2bua_builder")
+          if [ "$SOURCE" = "mod_telnyx_rtc" ]; then
+            TARGETS+=("b2bua-rtc")
+          else
+            TARGETS+=("b2bua")
+          fi
+
+          for target in "${TARGETS[@]}"; do
+            HTTP_CODE=$(gh api "repos/$ORG/$target/git/refs/heads/$BRANCH" \
+                 -X DELETE \
+                 --silent -i 2>&1 | head -1 | awk '{print $2}') || true
+
+            if [ "$HTTP_CODE" = "204" ]; then
+              echo "🗑️ [$SOURCE] Deleted $BRANCH from $target"
+            elif [ "$HTTP_CODE" = "422" ] || [ "$HTTP_CODE" = "404" ]; then
+              echo "ℹ️ [$SOURCE] Branch $BRANCH not found in $target (already deleted or never existed)"
+            else
+              echo "⚠️ [$SOURCE] Failed to delete $BRANCH from $target (HTTP $HTTP_CODE)"
+            fi
+          done
       - name: Trigger upstream build
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
         uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GIT_TOKEN }}
