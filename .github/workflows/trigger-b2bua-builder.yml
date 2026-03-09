@@ -19,7 +19,7 @@ jobs:
     runs-on: telnyx-small
     steps:
       - name: Create branch in downstream repos
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && (startsWith(github.ref_name, 'deploy-') || startsWith(github.ref_name, 'release-'))
         env:
           GH_TOKEN: ${{ secrets.GIT_TOKEN }}
           BRANCH: ${{ github.ref_name }}
@@ -27,34 +27,34 @@ jobs:
         run: |
           set -euo pipefail
           ORG="team-telnyx"
-
-          # Determine targets
-          TARGETS=("telnyx_b2bua_builder")
-          if [ "$SOURCE" = "mod_telnyx_rtc" ]; then
-            TARGETS+=("b2bua-rtc")
-          else
-            TARGETS+=("b2bua")
-          fi
+          TARGETS=("telnyx_b2bua_builder" "b2bua" "b2bua-rtc")
+          ERRORS=0
 
           for target in "${TARGETS[@]}"; do
-            # Get default branch SHA
             DEFAULT=$(gh api "repos/$ORG/$target" --jq '.default_branch')
             SHA=$(gh api "repos/$ORG/$target/git/ref/heads/$DEFAULT" --jq '.object.sha')
 
-            # Create branch — log result either way
-            HTTP_CODE=$(gh api "repos/$ORG/$target/git/refs" \
-                 -f "ref=refs/heads/$BRANCH" \
-                 -f "sha=$SHA" \
-                 --silent -i 2>&1 | head -1 | awk '{print $2}') || true
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X POST \
+              -H "Authorization: token $GH_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"ref\":\"refs/heads/$BRANCH\",\"sha\":\"$SHA\"}" \
+              "https://api.github.com/repos/$ORG/$target/git/refs")
 
             if [ "$HTTP_CODE" = "201" ]; then
               echo "✅ [$SOURCE] Created $BRANCH in $target"
             elif [ "$HTTP_CODE" = "422" ]; then
               echo "ℹ️ [$SOURCE] Branch $BRANCH already exists in $target (skipped)"
             else
-              echo "⚠️ [$SOURCE] Failed to create $BRANCH in $target (HTTP $HTTP_CODE)"
+              echo "❌ [$SOURCE] Failed to create $BRANCH in $target (HTTP $HTTP_CODE)"
+              ERRORS=$((ERRORS + 1))
             fi
           done
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "❌ $ERRORS branch creation(s) failed — blocking dispatch"
+            exit 1
+          fi
       - name: Delete branch in downstream repos
         if: github.event_name == 'delete' && github.event.ref_type == 'branch' && (startsWith(github.event.ref, 'deploy-') || startsWith(github.event.ref, 'release-'))
         env:
@@ -64,19 +64,13 @@ jobs:
         run: |
           set -euo pipefail
           ORG="team-telnyx"
-
-          # Determine targets (same routing as creation)
-          TARGETS=("telnyx_b2bua_builder")
-          if [ "$SOURCE" = "mod_telnyx_rtc" ]; then
-            TARGETS+=("b2bua-rtc")
-          else
-            TARGETS+=("b2bua")
-          fi
+          TARGETS=("telnyx_b2bua_builder" "b2bua" "b2bua-rtc")
 
           for target in "${TARGETS[@]}"; do
-            HTTP_CODE=$(gh api "repos/$ORG/$target/git/refs/heads/$BRANCH" \
-                 -X DELETE \
-                 --silent -i 2>&1 | head -1 | awk '{print $2}') || true
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X DELETE \
+              -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/repos/$ORG/$target/git/refs/heads/$BRANCH")
 
             if [ "$HTTP_CODE" = "204" ]; then
               echo "🗑️ [$SOURCE] Deleted $BRANCH from $target"
