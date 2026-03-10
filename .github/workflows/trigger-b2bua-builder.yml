@@ -56,7 +56,7 @@ jobs:
             exit 1
           fi
       - name: Delete branch in downstream repos
-        if: github.event_name == 'delete' && github.event.ref_type == 'branch' && (startsWith(github.event.ref, 'deploy-') || startsWith(github.event.ref, 'release-'))
+        if: github.event_name == 'delete' && github.event.ref_type == 'branch' && (startsWith(github.event.ref, 'deploy-') || startsWith(github.event.ref, 'release-')) && github.event.ref != 'deploy-development'
         env:
           GH_TOKEN: ${{ secrets.GIT_TOKEN }}
           BRANCH: ${{ github.event.ref }}
