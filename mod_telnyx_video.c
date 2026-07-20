@@ -1101,6 +1101,16 @@ static switch_status_t load_config(void)
 
 
 
+
+/* mod_telnyx_video_version (TELCORE-33): report this build's identity over fs_cli, so a
+ * hot-reload can be proven. Build timestamp comes from the compiler -- every
+ * rebuild changes it. .cpp/.c only; no build-system changes. */
+SWITCH_STANDARD_API(mod_telnyx_video_version_api)
+{
+	stream->write_function(stream, "mod_telnyx_video built=%s %s\n", __DATE__, __TIME__);
+	return SWITCH_STATUS_SUCCESS;
+}
+
 SWITCH_MODULE_LOAD_FUNCTION(mod_telnyx_video_load)
 {
 	switch_api_interface_t *api_interface;
@@ -1126,6 +1136,8 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_telnyx_video_load)
 	load_config();
 
 	*module_interface = switch_loadable_module_create_module_interface(pool, modname);
+	{ switch_api_interface_t *_ver_api; SWITCH_ADD_API(_ver_api, "mod_telnyx_video_version", "Show mod_telnyx_video build identity", mod_telnyx_video_version_api, ""); }
+
 	telnyx_video_endpoint_interface = switch_loadable_module_create_interface(*module_interface, SWITCH_ENDPOINT_INTERFACE);
 	telnyx_video_endpoint_interface->interface_name = "telnyx_video";
 	telnyx_video_endpoint_interface->io_routines = &telnyx_video_io_routines;
